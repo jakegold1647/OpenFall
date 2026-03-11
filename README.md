@@ -242,43 +242,127 @@ Sequences adl-01 through adl-09 (basic upright ADL: walking, sitting in chair, r
 
 ---
 
+## Live camera modes
+
+OpenFall supports three hardware configurations. The app auto-detects which one to use on startup.
+
+---
+
+### Kinect sensor (recommended)
+
+A Microsoft Kinect provides a real depth stream alongside its RGB camera, giving the most accurate 3D biomechanics. When a Kinect is detected the display shows a 3-panel layout:
+
+```
+[ Kinect depth | RGB + skeleton | DA-V2 depth ]
+```
+
+Just plug in the Kinect and run:
+```bash
+python run.py
+```
+
+The same 3-panel layout is what you see in the annotated sample videos (`data/annotated/`), which were recorded from UR Fall Dataset Kinect clips.
+
+---
+
+### Single USB webcam + depth model
+
+Without a Kinect you can still get a depth panel using **Depth Anything V2**, a monocular depth estimation model that runs on any RGB camera.  The display shows a 2-panel layout:
+
+```
+[ RGB + skeleton | DA-V2 depth ]
+```
+
+```bash
+# 2-panel view with live depth map (downloads ~100 MB model on first run)
+python run.py 0 --show-depth
+
+# Skeleton only, no depth model (fastest startup)
+python run.py 0 --no-depth
+```
+
+The depth model runs every 3 frames by default and is fast enough for real-time use on CPU.
+
+---
+
+### Multiple USB webcams (no depth sensor)
+
+If you have two or three USB cameras you can run them simultaneously for multi-angle coverage.  Each camera runs its own independent detector.  The display shows all feeds side by side:
+
+```
+[ CAM0 + skeleton | CAM1 + skeleton | CAM2 + skeleton ]
+```
+
+First check which camera indices Windows has assigned:
+```bash
+python -c "import cv2; [print(f'Camera {i}: OK') for i in range(5) if cv2.VideoCapture(i).isOpened()]"
+```
+
+Then launch with those indices:
+```bash
+# Three cameras
+python run.py 0 1 2 --no-depth
+
+# Two cameras
+python run.py 0 1 --no-depth
+```
+
+If any camera detects a state change the terminal prints which camera triggered it, e.g. `CAM1: PREFALL`.
+
+---
+
+### Controls (all modes)
+
+| Key | Action |
+|---|---|
+| Q / Esc | Quit |
+| R | Reset all detectors |
+
+---
+
 ## Quickstart
 
 ### Local
 
 ```bash
 git clone <repo>
-cd prefall
+cd OpenFall
 
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # Linux/macOS
+# Windows: .venv\Scripts\activate
+
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 
-# MediaPipe model is fetched automatically on first run.
-# Download UR Fall Dataset test videos (optional):
-python scripts/download_samples.py
+# Download the MediaPipe pose model
+curl -L https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task -o data/pose_landmarker_lite.task
+# Windows PowerShell:
+# mkdir data; Invoke-WebRequest -Uri "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task" -OutFile "data\pose_landmarker_lite.task"
 
-# Launch — auto-detects Kinect, 3-camera, or single webcam
+# Launch with auto-detect
 python run.py
 
-# Single webcam (index 0), 2D only
+# Single webcam, skeleton only
 python run.py 0 --no-depth
 
-# Three-camera setup (indices 0, 1, 2)
-python run.py 0 1 2
+# Single webcam, 2-panel with depth map
+python run.py 0 --show-depth
 
-# Video file with Depth Anything V2 and depth panel
+# Three cameras, multi-angle
+python run.py 0 1 2 --no-depth
+
+# Video file with depth panel + save output
 python run.py data/videos/fall-01-cam0.mp4 --split-rgb --show-depth --save out.mp4
 ```
 
 ### Docker
 
 ```bash
-docker build -t prefall .
+docker build -t openfall .
 
 docker run --rm \
   -v $(pwd)/data/videos:/app/data/videos \
-  prefall data/videos/fall-01-cam0.mp4 --split-rgb --no-display
+  openfall data/videos/fall-01-cam0.mp4 --split-rgb --no-display
 ```
 
 ---
