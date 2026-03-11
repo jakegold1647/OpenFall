@@ -41,8 +41,13 @@ class VideoSource:
         self.release()
 
     def __iter__(self):
+        consecutive_failures = 0
         while True:
             ok, frame = self.read()
             if not ok:
-                break
+                consecutive_failures += 1
+                if consecutive_failures >= 30:
+                    break  # give up after 30 consecutive failures
+                continue
+            consecutive_failures = 0
             yield frame
