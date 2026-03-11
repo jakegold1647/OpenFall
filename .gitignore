@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Data — model weights and videos are not committed
+data/pose_landmarker_lite.task
+data/videos/
+data/annotated/
+data/fall-01-annotated.mp4
+*.mp4
+out.mp4
+
+# HuggingFace cache
+~/.cache/huggingface/
+
+# IDE / OS
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
