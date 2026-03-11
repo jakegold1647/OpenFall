@@ -1,5 +1,4 @@
 """Video source abstraction: supports webcam index or video file path."""
-import sys
 import cv2
 
 
@@ -10,18 +9,9 @@ class VideoSource:
             source: int for webcam index (e.g. 0), or str path to video file.
         """
         self.source = source
-        # On Windows use DirectShow for reliable webcam access
-        if isinstance(source, int) and sys.platform == "win32":
-            self.cap = cv2.VideoCapture(source, cv2.CAP_DSHOW)
-        else:
-            self.cap = cv2.VideoCapture(source)
+        self.cap = cv2.VideoCapture(source)
         if not self.cap.isOpened():
             raise RuntimeError(f"Cannot open video source: {source!r}")
-        # Discard the first several frames so the camera sensor has time to
-        # adjust exposure/white-balance before detection starts.
-        if isinstance(source, int):
-            for _ in range(30):
-                self.cap.read()
 
     @property
     def fps(self):

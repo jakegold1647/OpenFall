@@ -171,6 +171,9 @@ def _run_single(src, args, depth_est=None, cfg: Optional[CameraConfig] = None):
         writer = cv2.VideoWriter(args.save, fourcc, fps, (out_w, vh))
         print(f"Saving → {args.save}  ({out_w}x{vh}, {n_panels} panel(s))")
 
+    if not args.no_display:
+        cv2.namedWindow("OpenFall", cv2.WINDOW_NORMAL)
+
     prev_state = None
     frame_num = 0
     elapsed = 0.0
@@ -210,8 +213,8 @@ def _run_single(src, args, depth_est=None, cfg: Optional[CameraConfig] = None):
                 writer.write(output)
 
             if not args.no_display:
-                cv2.imshow("prefall", output)
-                key = cv2.waitKey(delay_ms) & 0xFF
+                cv2.imshow("OpenFall", output)
+                key = cv2.waitKey(1) & 0xFF
                 if key in (ord("q"), 27):
                     break
                 if key == ord("r"):
