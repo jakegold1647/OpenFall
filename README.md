@@ -125,7 +125,7 @@ All results are from the 2D detector (`python run.py <video> --split-rgb --no-di
 
 ---
 
-### Fall sequences — complete results (30 / 30)
+### Fall sequences — detection results (all 30 evaluated)
 
 | Video | Frames | PREFALL frame | FALLEN frame | Lead time | Notes |
 |---|---|---|---|---|---|
@@ -516,3 +516,9 @@ If you use the UR Fall Detection Dataset:
 Kepski M., Kwolek B. (2014) Fall Detection Using Ceiling-Mounted 3D Depth Camera.
 International Conference on Computer Vision Theory and Applications (VISAPP), pp. 640–647.
 ```
+
+---
+
+## Acknowledgments
+
+This project was developed with assistance from Claude (Anthropic) for code implementation and documentation.

@@ -22,6 +22,9 @@ data/fall-01-annotated.mp4
 *.mp4
 out.mp4
 
+# Except demo video (for GitHub showcase)
+!demo.mp4
+
 # HuggingFace cache
 ~/.cache/huggingface/
 
