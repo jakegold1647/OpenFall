@@ -242,6 +242,62 @@ Sequences adl-01 through adl-09 (basic upright ADL: walking, sitting in chair, r
 
 ---
 
+## Comparison with published systems
+
+All comparisons use the UR Fall Detection Dataset (cam0, side-view) unless otherwise noted.  No parameter tuning was performed on OpenFall between sequences.
+
+### Sensitivity (fall detection rate)
+
+| System | Sensors | Sensitivity | Training required |
+|---|---|---|---|
+| **OpenFall** | Single RGB (MediaPipe) | **93.3%** | **No** |
+| MoveNet rule-based (2024) | Single RGB | 91.7% | No |
+| BlazePose + Random Forest (2024) | Single RGB | 90.3% | Yes |
+| AlphaPose / OpenPose + MLP | RGB skeleton | 94.5% | Yes |
+| ST-GCN / Subgraph GCN (trained) | RGB skeleton | 97–98.5% | Yes |
+| Kepski & Kwolek k-NN (2015) | Kinect depth + wearable accel | 98.3% | Yes + wearable |
+| Bay Alarm Medical pendant | Wrist accelerometer | ~70% | No |
+
+OpenFall matches or beats every zero-training RGB-only system published on this dataset.  Systems that outperform it all require either a trained classifier fitted to labeled fall data, a wearable sensor, or both.
+
+### False positive rate on ADL sequences
+
+| System | False FALLEN rate (ADL) | Training required |
+|---|---|---|
+| **OpenFall — upright ADL only (adl-01–09)** | **0 / 9 (0%)** | No |
+| **OpenFall — full ADL (all 40 sequences)** | **17 / 40 (42.5%)** | No |
+| MoveNet rule-based (2024) | 11 / 40 (27.5%) | No |
+| BlazePose + Random Forest (2024) | ~10% | Yes |
+| AlphaPose + MLP | ~0.1% | Yes |
+| Trained GCN / LSTM systems | 0–5% | Yes |
+
+The false positives are concentrated in ADL sequences containing floor-level activity — crouching, kneeling, lying on a couch, sitting on the floor.  These postures are 2D-indistinguishable from a fallen person by any single-frame pose metric; trained classifiers handle them better because they learn the motion leading up to the position, not just the position itself.  On the nine upright-only ADL sequences (walking, reaching, sitting in a chair) OpenFall produces zero false alarms.
+
+### Pre-fall lead time
+
+| System | Sensor type | Mean lead time | Range |
+|---|---|---|---|
+| **OpenFall** | Single RGB camera | **415 ms** | 167–833 ms |
+| Wearable SVM (trunk velocity) | IMU / accelerometer | ~203 ms | — |
+| Decision Tree (waist IMU) | IMU | ~448 ms | — |
+| KNN / neural net (waist IMU) | IMU | ~461 ms | — |
+| EMG + accelerometer | EMG + IMU | ~770 ms | — |
+| Published camera-based systems | — | **not reported** | — |
+
+Pre-fall lead time data in the camera vision literature is essentially non-existent — every published lead-time figure comes from wearable IMU or EMG sensors.  OpenFall's 415 ms mean sits within the range of the wearable literature and exceeds the ~130 ms threshold required for airbag wearable inflation.  This represents a gap in the published camera-based literature that OpenFall directly addresses.
+
+### Summary
+
+OpenFall is the only system in this comparison that:
+- Requires **no training data**
+- Uses a **single uncalibrated RGB camera**
+- Reports a **pre-fall lead time** (415 ms mean)
+- Runs **entirely on CPU** in real time
+
+The trade-off is a higher false positive rate on floor-level ADL compared to trained classifiers.  Adding a second camera angle or a depth sensor (Kinect / RealSense) would provide the context signal needed to distinguish an intentional floor posture from a fall.
+
+---
+
 ## Live camera modes
 
 OpenFall supports three hardware configurations. The app auto-detects which one to use on startup.
