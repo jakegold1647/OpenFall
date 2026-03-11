@@ -173,6 +173,7 @@ def _run_single(src, args, depth_est=None, cfg: Optional[CameraConfig] = None):
 
     prev_state = None
     frame_num = 0
+    elapsed = 0.0
     t0 = time.time()
 
     with video, FallDetector(depth_estimator=depth_est, fov_h_deg=args.fov) as det:
