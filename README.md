@@ -121,34 +121,124 @@ python scripts/download_samples.py --count 5   # fall-01..05-cam0 + adl-01..02-c
 
 ## Evaluation
 
-All results below are from running the 2D detector (`python run.py <video> --split-rgb --no-display`) on UR Fall Detection Dataset `cam0` sequences.  No parameter tuning was performed between sequences.
+All results are from the 2D detector (`python run.py <video> --split-rgb --no-display --no-depth`) run against the complete UR Fall Detection Dataset — all 30 fall sequences and all 40 ADL sequences.  No parameter tuning was performed between sequences.
 
-### Fall sequences — detection results
+---
+
+### Fall sequences — complete results (30 / 30)
 
 | Video | Frames | PREFALL frame | FALLEN frame | Lead time | Notes |
 |---|---|---|---|---|---|
-| fall-01-cam0 | 160 | 95 (3.17 s) | 107 (3.57 s) | **400 ms** | clean STANDING → PREFALL → FALLEN |
-| fall-02-cam0 | 110 | 54 (1.80 s) | 60 (2.00 s) | **200 ms** | fast fall; clean transition |
-| fall-03-cam0 | 215 | 157 (5.23 s) | 182 (6.07 s) | **833 ms** | early stumble triggers brief PREFALL at frame 123 (returns to STANDING); final fall correctly detected |
-| fall-04-cam0 | 96 | 16 (0.53 s) | 28 (0.93 s) | **400 ms** | very rapid fall; brief STANDING flicker at frame 44 while subject is already on ground, immediately re-enters FALLEN at frame 45 |
-| fall-05-cam0 | 151 | 93 (3.10 s) | 103 (3.43 s) | **333 ms** | clean STANDING → PREFALL → FALLEN |
+| fall-01 | 160 | 95 | 107 | **400 ms** | Clean STANDING → PREFALL → FALLEN |
+| fall-02 | 110 | 54 | 60 | **200 ms** | Fast fall; clean transition |
+| fall-03 | 215 | 123→157 | 182 | **833 ms** | Early stumble at f123 returns to STANDING; true fall correctly detected at f157 |
+| fall-04 | 96 | 16 | 28 | **400 ms** | Rapid fall; brief STANDING flicker at f44 while subject is on ground, immediately re-enters FALLEN |
+| fall-05 | 151 | 93 | 103 | **333 ms** | Clean |
+| fall-06 | 100 | 34 | 39 | **167 ms** | Clean |
+| fall-07 | 156 | 95 | 110 | **500 ms** | Clean |
+| fall-08 | 91 | 31 | 47 | **533 ms** | Clean |
+| fall-09 | 185 | 128 | 142 | **467 ms** | Clean |
+| fall-10 | 130 | 42 | 52 | **333 ms** | Clean |
+| fall-11 | 130 | 57 | 68 | **367 ms** | Clean |
+| fall-12 | 110 | 32 | 42 | **333 ms** | Clean |
+| fall-13 | 85 | 58 | — | — | **MISSED** — PREFALL raised at f58 then returns to STANDING; video ends before FALLEN threshold |
+| fall-14 | 61 | 12 | 34 | **733 ms** | Clean |
+| fall-15 | 71 | 43 | 53 | **333 ms** | Brief STANDING flicker at f56; FALLEN correctly confirmed |
+| fall-16 | 55 | 17 | 38 | **700 ms** | Clean |
+| fall-17 | 95 | 70 | 78 | **267 ms** | Clean |
+| fall-18 | 65 | 20 | 33 | **433 ms** | Brief STANDING/FALLEN oscillation after f53 while subject on ground |
+| fall-19 | 100 | 44 | 55 | **367 ms** | STANDING flicker at f71; secondary PREFALL episodes as subject moves on ground |
+| fall-20 | 110 | 41 | 47 | **200 ms** | Rapid oscillation around f49–52; FALLEN correctly triggered first |
+| fall-21 | 55 | 37 | 44 | **233 ms** | Clean |
+| fall-22 | 56 | 14 | 21 | **233 ms** | Clean |
+| fall-23 | 75 | 42 | 55 | **433 ms** | Post-impact oscillation (f57–69); FALLEN correctly triggered |
+| fall-24 | 60 | 18 | 26 | **267 ms** | Clean |
+| fall-25 | 85 | 59 | 66 | **233 ms** | Single-frame STANDING flicker at f60; FALLEN correctly confirmed |
+| fall-26 | 61 | 12 | 32 | **667 ms** | Brief flicker at f36–37 while on ground |
+| fall-27 | 92 | 70 | — | — | **MISSED** — PREFALL raised at f70; video ends before FALLEN threshold |
+| fall-28 | 66 | 26 | 45 | **633 ms** | Post-impact STANDING/PREFALL oscillation at f57–60 |
+| fall-29 | 99 | 68 | 77 | **300 ms** | Clean |
+| fall-30 | 70 | 23 | 45 | **733 ms** | Clean |
 
-**Detection rate: 5 / 5 (100%)**
-**False FALLEN events: 0 / 5**
-**Mean PREFALL lead time: 433 ms** (range 200–833 ms)
+**FALLEN detected: 28 / 30 (93.3%)**
+**PREFALL-only (FALLEN missed): 2 / 30 — fall-13, fall-27**
+**False FALLEN events during fall sequences: 0 / 30**
+**Mean PREFALL lead time (28 detected): 415 ms** (range 167–833 ms)
 
-### Activities of daily living — false-positive audit
+Both misses (fall-13, fall-27) raised PREFALL before the video ended — the fall was partially detected.  In fall-13 the subject's body angle did not sustain the FALLEN threshold before the clip ended (85 frames / 2.8 s); fall-27 similarly cuts off at 92 frames with the subject mid-fall.
 
-| Video | Frames | PREFALL episodes | Max PREFALL duration | False FALLEN |
-|---|---|---|---|---|
-| adl-01-cam0 | 150 | 1 (frames 106–118) | 433 ms | 0 |
-| adl-02-cam0 | 180 | 2 (frames 129–130, 132–133) | 67 ms | 0 |
+---
 
-Brief PREFALL episodes during ADL are consistent with the subject leaning forward or bending — behaviours that transiently satisfy the body-angle criterion.  Neither sequence produced a FALLEN event.
+### ADL sequences — false-positive audit (40 / 40)
 
-**False FALLEN rate: 0 / 2 (0%)**
+| Video | Frames | False FALLEN | Notes |
+|---|---|---|---|
+| adl-01 | 150 | No | Brief PREFALL f106–118 (forward lean) |
+| adl-02 | 180 | No | Two 1-frame PREFALL flashes (f129, f132) |
+| adl-03 | 180 | No | Clean STANDING throughout |
+| adl-04 | 150 | No | PREFALL f71–128 (prolonged forward bend) |
+| adl-05 | 180 | No | PREFALL f97–146 (crouching activity) |
+| adl-06 | 230 | No | PREFALL f166–208 (bending) |
+| adl-07 | 180 | No | Clean |
+| adl-08 | 180 | No | Clean |
+| adl-09 | 150 | No | PREFALL f106–125 (leaning) |
+| adl-10 | 300 | **Yes** | FALLEN f214–246; subject likely sitting/crouching at floor level |
+| adl-11 | 300 | **Yes** | FALLEN f242; prolonged crouching near floor |
+| adl-12 | 250 | No | Multiple brief PREFALL episodes (bending) |
+| adl-13 | 265 | **Yes** | FALLEN f238–239; near-floor activity |
+| adl-14 | 235 | No | PREFALL f158–172 (bending) |
+| adl-15 | 275 | No | Multiple brief PREFALL flashes (repetitive bending) |
+| adl-16 | 240 | **Yes** | FALLEN f172–191; near-floor activity |
+| adl-17 | 230 | **Yes** | Repeated FALLEN f168–211; prolonged floor-level activity |
+| adl-18 | 265 | No | PREFALL f202–206 (brief lean) |
+| adl-19 | 250 | **Yes** | FALLEN f184, f196; near-floor activity |
+| adl-20 | 270 | No | 1-frame PREFALL f218 |
+| adl-21 | 280 | No | 1-frame PREFALL f194 |
+| adl-22 | 240 | No | PREFALL f133–134 |
+| adl-23 | 220 | No | Brief PREFALL f109–114 |
+| adl-24 | 70 | No | Brief PREFALL f7–16 |
+| adl-25 | 110 | No | Clean |
+| adl-26 | 95 | No | Brief PREFALL f31–41 (repetitive bends) |
+| adl-27 | 100 | No | Clean |
+| adl-28 | 85 | No | Brief PREFALL flashes f37, f76 |
+| adl-29 | 125 | No | Clean |
+| adl-30 | 400 | **Yes** | Repeated FALLEN f183–268; prolonged floor-level / lying activity |
+| adl-31 | 250 | **Yes** | FALLEN f90–161; near-floor activity |
+| adl-32 | 200 | **Yes** | Repeated FALLEN throughout; subject near/on floor |
+| adl-33 | 200 | **Yes** | FALLEN f102–166; subject on floor |
+| adl-34 | 191 | **Yes** | Repeated FALLEN; repeated floor-level movements |
+| adl-35 | 280 | **Yes** | Repeated FALLEN f60–105; floor-level activity |
+| adl-36 | 340 | **Yes** | FALLEN f242–252; near-floor activity |
+| adl-37 | 350 | **Yes** | FALLEN f266; near-floor activity |
+| adl-38 | 345 | **Yes** | FALLEN f215–223; near-floor activity |
+| adl-39 | 270 | **Yes** | FALLEN f214–216; near-floor activity |
+| adl-40 | 330 | **Yes** | Repeated FALLEN; extended floor-level sequence |
 
-> **Scope note.** This evaluation covers 7 of the 70 sequences in the UR dataset.  Systematic evaluation across all 30 fall + 40 ADL sequences, across different fall directions and subject demographics, is needed before clinical deployment.
+**False FALLEN rate: 17 / 40 (42.5%)**
+**Clean (no false FALLEN): 23 / 40 (57.5%)**
+
+The 17 sequences with false FALLEN events fall into two groups:
+
+1. **Near-floor ADL (adl-10 to adl-19)** — activities such as picking objects off the floor, crouching, and kneeling that transiently drive hip Y-position and body angle past the FALLEN thresholds.
+
+2. **Extended floor-level sequences (adl-30 to adl-40)** — longer clips where the subject is lying or sitting on the ground for extended periods.  These sequences are functionally indistinguishable from a fallen person by any 2D pose metric — the body is horizontal, near the floor, and the bounding box is wide.  A context signal (recent motion, continuous monitoring baseline) would be required to disambiguate.
+
+Sequences adl-01 through adl-09 (basic upright ADL: walking, sitting in chair, reaching) produced **zero false FALLEN events**.
+
+---
+
+### Summary
+
+| Metric | Result |
+|---|---|
+| Fall sequences evaluated | 30 / 30 |
+| FALLEN state detected | **28 / 30 (93.3%)** |
+| PREFALL-only (partial detection) | 2 / 30 (fall-13, fall-27) |
+| False FALLEN during fall sequences | 0 / 30 |
+| Mean PREFALL lead time | **415 ms** (range 167–833 ms) |
+| ADL sequences evaluated | 40 / 40 |
+| ADL with false FALLEN (floor-level) | 17 / 40 (42.5%) |
+| ADL with false FALLEN (upright activities only, adl-01–09) | 0 / 9 (0%) |
 
 ---
 
