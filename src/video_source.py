@@ -17,6 +17,11 @@ class VideoSource:
             self.cap = cv2.VideoCapture(source)
         if not self.cap.isOpened():
             raise RuntimeError(f"Cannot open video source: {source!r}")
+        # Discard the first several frames so the camera sensor has time to
+        # adjust exposure/white-balance before detection starts.
+        if isinstance(source, int):
+            for _ in range(30):
+                self.cap.read()
 
     @property
     def fps(self):
