@@ -1,4 +1,4 @@
-# prefall
+# OpenFall
 
 **Real-time pre-fall detection from monocular video using pose estimation and depth-based biomechanics.**
 
@@ -6,9 +6,9 @@
 
 ## Clinical motivation
 
-Falls are the leading cause of injury-related death in adults over 65 and account for roughly $50 billion in annual US healthcare costs.  The clinical value in *pre-fall* detection — identifying the loss-of-balance event **before** the body reaches the floor — is that it opens a narrow but meaningful intervention window: alerting a caregiver, triggering an airbag wearable, or activating a grab-bar actuator.
+Falls are the leading cause of injury-related death in adults over 65 and account for roughly $50 billion in annual US healthcare costs. The clinical value in *pre-fall* detection — identifying the loss-of-balance event **before** the body reaches the floor — is that it opens a narrow but meaningful intervention window: alerting a caregiver, triggering an airbag wearable, or activating a grab-bar actuator.
 
-Current deployed solutions are almost exclusively post-hoc: wrist accelerometers and call buttons that require the patient to have already fallen and retained consciousness.  Camera-based approaches remove the dependence on patient compliance but have historically required calibrated stereo rigs or depth sensors at the bedside.  This project demonstrates that a single uncalibrated RGB camera — including a laptop webcam — can produce clinically meaningful fall-state signals by combining skeleton kinematics with monocular depth estimation.
+Current deployed solutions are almost exclusively post-hoc: wrist accelerometers and call buttons that require the patient to have already fallen and retained consciousness. Camera-based approaches remove the dependence on patient compliance but have historically required calibrated stereo rigs or depth sensors at the bedside. This project demonstrates that a single uncalibrated RGB camera — including a laptop webcam — can produce clinically meaningful fall-state signals by combining skeleton kinematics with monocular depth estimation.
 
 ### Three-state model
 
@@ -22,67 +22,30 @@ STANDING  ──(body tilt + downward acceleration)──►  PREFALL
                                                     FALLEN
 ```
 
-The **PREFALL** state is the clinical target: the person is losing balance but has not yet impacted the ground.  Transitions are detected in 60–400 ms on CPU hardware depending on subject speed.
+The **PREFALL** state is the clinical target: the person is losing balance but has not yet impacted the ground. Transitions are detected in 60–400 ms on CPU hardware depending on subject speed.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           run.py  (CLI)                             │
-│  --source  --split-rgb  --depth  --show-depth  --save  --speed      │
-└───────────────┬────────────────────────────┬────────────────────────┘
-                │                            │
-                ▼                            ▼
-  ┌─────────────────────┐       ┌────────────────────────┐
-  │   VideoSource        │       │   DepthEstimator        │
-  │  (webcam or file)    │       │  Depth Anything V2      │
-  │  src/video_source.py │       │  Small-hf  (HF hub)     │
-  └────────┬────────────┘       │  stride=3 (10 fps eff.) │
-           │ BGR frame           │  src/depth_estimator.py │
-           │                    └──────────┬───────────────┘
-           │                               │ float32 H×W
-           │           ┌───────────────────┘ disparity map
-           ▼           ▼
-  ┌──────────────────────────────────────────────────────────┐
-  │                    FallDetector                           │
-  │                   src/detector.py                         │
-  │                                                           │
-  │  ┌─────────────────────────┐  ┌────────────────────────┐ │
-  │  │  MediaPipe Pose          │  │  biomechanics.py        │ │
-  │  │  Landmarker (Tasks API)  │  │                        │ │
-  │  │  33 landmarks, VIDEO     │  │  build_camera_matrix   │ │
-  │  │  mode, 30 fps            │  │  lift_landmarks_3d     │ │
-  │  └──────────┬──────────────┘  │  estimate_ground_plane  │ │
-  │             │ 2D landmarks     │    (RANSAC, 50 iters)   │ │
-  │             ▼                  │  compute_3d_features    │ │
-  │  ┌──────────────────────┐     └──────────┬─────────────┘ │
-  │  │  2D feature scorer   │                │ 3D features    │
-  │  │                      │                ▼                │
-  │  │  • body_angle        │     ┌────────────────────────┐ │
-  │  │  • aspect_ratio      │     │  3D feature scorer      │ │
-  │  │  • hip_y             │     │                         │ │
-  │  │  • com_velocity_down │     │  • com_drop_rate  (Y)   │ │
-  │  └──────────┬───────────┘     │  • spine_angle_3d  (HUD)│ │
-  │             │ votes            │  • com_depth_velocity   │ │
-  │             └────────┬─────── │    (HUD; forward falls) │ │
-  │                      │        └──────────┬──────────────┘ │
-  │                      │ combined votes    │                 │
-  │                      ▼                  │                 │
-  │            ┌──────────────────────────────────────┐       │
-  │            │         State machine                 │       │
-  │            │                                       │       │
-  │            │  fallen_score  ≥ 2  →  FALLEN         │       │
-  │            │  prefall_score ≥ 1  →  PREFALL         │       │
-  │            │  else               →  STANDING        │       │
-  │            └──────────────────────────────────────┘       │
-  └──────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-              annotated frame  +  metrics dict
-              (optional depth panel, HUD overlay)
+video frame ──► MediaPipe Pose (33 landmarks, VIDEO mode, 30 fps) ──► 2D features
+     │                                                                    │
+     └──► Depth Anything V2 Small (stride 3, ~10 fps) ──► 3D features ─────┤
+                                                                          ▼
+                                                                   state machine
+                                                         fallen_score >= 2 → FALLEN
+                                                         prefall_score >= 1 → PREFALL
+                                                         otherwise         → STANDING
 ```
+
+| Module | Responsibility |
+|---|---|
+| `run.py` | CLI: `--source --split-rgb --depth --show-depth --save --speed` |
+| `src/video_source.py` | Webcam or file input |
+| `src/depth_estimator.py` | Depth Anything V2 Small (HF hub), relative disparity |
+| `src/detector.py` | Pose landmarking, feature scoring, state machine |
+| `src/biomechanics.py` | Camera matrix, 3D lifting, ground-plane RANSAC (50 iters), 3D features |
 
 ### Scoring design
 
@@ -121,7 +84,7 @@ python scripts/download_samples.py --count 5   # fall-01..05-cam0 + adl-01..02-c
 
 ## Evaluation
 
-All results are from the 2D detector (`python run.py <video> --split-rgb --no-display --no-depth`) run against the complete UR Fall Detection Dataset — all 30 fall sequences and all 40 ADL sequences.  No parameter tuning was performed between sequences.
+All results are from the 2D detector (`python run.py <video> --split-rgb --no-display --no-depth`) run against the complete UR Fall Detection Dataset — all 30 fall sequences and all 40 ADL sequences. No parameter tuning was performed between sequences.
 
 ---
 
@@ -165,7 +128,7 @@ All results are from the 2D detector (`python run.py <video> --split-rgb --no-di
 **False FALLEN events during fall sequences: 0 / 30**
 **Mean PREFALL lead time (28 detected): 415 ms** (range 167–833 ms)
 
-Both misses (fall-13, fall-27) raised PREFALL before the video ended — the fall was partially detected.  In fall-13 the subject's body angle did not sustain the FALLEN threshold before the clip ended (85 frames / 2.8 s); fall-27 similarly cuts off at 92 frames with the subject mid-fall.
+Both misses (fall-13, fall-27) raised PREFALL before the video ended — the fall was partially detected. In fall-13 the subject's body angle did not sustain the FALLEN threshold before the clip ended (85 frames / 2.8 s); fall-27 similarly cuts off at 92 frames with the subject mid-fall.
 
 ---
 
@@ -221,7 +184,7 @@ The 17 sequences with false FALLEN events fall into two groups:
 
 1. **Near-floor ADL (adl-10 to adl-19)** — activities such as picking objects off the floor, crouching, and kneeling that transiently drive hip Y-position and body angle past the FALLEN thresholds.
 
-2. **Extended floor-level sequences (adl-30 to adl-40)** — longer clips where the subject is lying or sitting on the ground for extended periods.  These sequences are functionally indistinguishable from a fallen person by any 2D pose metric — the body is horizontal, near the floor, and the bounding box is wide.  A context signal (recent motion, continuous monitoring baseline) would be required to disambiguate.
+2. **Extended floor-level sequences (adl-30 to adl-40)** — longer clips where the subject is lying or sitting on the ground for extended periods. These sequences are functionally indistinguishable from a fallen person by any 2D pose metric — the body is horizontal, near the floor, and the bounding box is wide. A context signal (recent motion, continuous monitoring baseline) would be required to disambiguate.
 
 Sequences adl-01 through adl-09 (basic upright ADL: walking, sitting in chair, reaching) produced **zero false FALLEN events**.
 
@@ -244,7 +207,7 @@ Sequences adl-01 through adl-09 (basic upright ADL: walking, sitting in chair, r
 
 ## Comparison with published systems
 
-All comparisons use the UR Fall Detection Dataset (cam0, side-view) unless otherwise noted.  No parameter tuning was performed on OpenFall between sequences.
+All comparisons use the UR Fall Detection Dataset (cam0, side-view) unless otherwise noted. No parameter tuning was performed on OpenFall between sequences.
 
 ### Sensitivity (fall detection rate)
 
@@ -258,7 +221,7 @@ All comparisons use the UR Fall Detection Dataset (cam0, side-view) unless other
 | Kepski & Kwolek k-NN (2015) | Kinect depth + wearable accel | 98.3% | Yes + wearable |
 | Bay Alarm Medical pendant | Wrist accelerometer | ~70% | No |
 
-OpenFall matches or beats every zero-training RGB-only system published on this dataset.  Systems that outperform it all require either a trained classifier fitted to labeled fall data, a wearable sensor, or both.
+OpenFall matches or beats every zero-training RGB-only system published on this dataset. Systems that outperform it all require either a trained classifier fitted to labeled fall data, a wearable sensor, or both.
 
 ### False positive rate on ADL sequences
 
@@ -271,7 +234,7 @@ OpenFall matches or beats every zero-training RGB-only system published on this 
 | AlphaPose + MLP | ~0.1% | Yes |
 | Trained GCN / LSTM systems | 0–5% | Yes |
 
-The false positives are concentrated in ADL sequences containing floor-level activity — crouching, kneeling, lying on a couch, sitting on the floor.  These postures are 2D-indistinguishable from a fallen person by any single-frame pose metric; trained classifiers handle them better because they learn the motion leading up to the position, not just the position itself.  On the nine upright-only ADL sequences (walking, reaching, sitting in a chair) OpenFall produces zero false alarms.
+The false positives are concentrated in ADL sequences containing floor-level activity — crouching, kneeling, lying on a couch, sitting on the floor. These postures are 2D-indistinguishable from a fallen person by any single-frame pose metric; trained classifiers handle them better because they learn the motion leading up to the position, not just the position itself. On the nine upright-only ADL sequences (walking, reaching, sitting in a chair) OpenFall produces zero false alarms.
 
 ### Pre-fall lead time
 
@@ -284,7 +247,7 @@ The false positives are concentrated in ADL sequences containing floor-level act
 | EMG + accelerometer | EMG + IMU | ~770 ms | — |
 | Published camera-based systems | — | **not reported** | — |
 
-Pre-fall lead time data in the camera vision literature is essentially non-existent — every published lead-time figure comes from wearable IMU or EMG sensors.  OpenFall's 415 ms mean sits within the range of the wearable literature and exceeds the ~130 ms threshold required for airbag wearable inflation.  This represents a gap in the published camera-based literature that OpenFall directly addresses.
+Pre-fall lead time data in the camera vision literature is essentially non-existent — every published lead-time figure comes from wearable IMU or EMG sensors. OpenFall's 415 ms mean sits within the range of the wearable literature and exceeds the ~130 ms threshold required for airbag wearable inflation. This represents a gap in the published camera-based literature that OpenFall directly addresses.
 
 ### Summary
 
@@ -294,7 +257,7 @@ OpenFall is the only system in this comparison that:
 - Reports a **pre-fall lead time** (415 ms mean)
 - Runs **entirely on CPU** in real time
 
-The trade-off is a higher false positive rate on floor-level ADL compared to trained classifiers.  Adding a second camera angle or a depth sensor (Kinect / RealSense) would provide the context signal needed to distinguish an intentional floor posture from a fall.
+The trade-off is a higher false positive rate on floor-level ADL compared to trained classifiers. Adding a second camera angle or a depth sensor (Kinect / RealSense) would provide the context signal needed to distinguish an intentional floor posture from a fall.
 
 ---
 
@@ -323,7 +286,7 @@ The same 3-panel layout is what you see in the annotated sample videos (`data/an
 
 ### Single USB webcam + depth model
 
-Without a Kinect you can still get a depth panel using **Depth Anything V2**, a monocular depth estimation model that runs on any RGB camera.  The display shows a 2-panel layout:
+Without a Kinect you can still get a depth panel using **Depth Anything V2**, a monocular depth estimation model that runs on any RGB camera. The display shows a 2-panel layout:
 
 ```
 [ RGB + skeleton | DA-V2 depth ]
@@ -343,7 +306,7 @@ The depth model runs every 3 frames by default and is fast enough for real-time 
 
 ### Multiple USB webcams (no depth sensor)
 
-If you have two or three USB cameras you can run them simultaneously for multi-angle coverage.  Each camera runs its own independent detector.  The display shows all feeds side by side:
+If you have two or three USB cameras you can run them simultaneously for multi-angle coverage. Each camera runs its own independent detector. The display shows all feeds side by side:
 
 ```
 [ CAM0 + skeleton | CAM1 + skeleton | CAM2 + skeleton ]
@@ -494,17 +457,17 @@ prefall/
 
 ## Limitations and future work
 
-- **Depth is relative, not metric.** Depth Anything V2 produces disparity (closer = higher value).  All 3D features are normalised within each frame and cannot be compared across frames or subjects.  A calibrated depth sensor (Kinect, RealSense) would enable metric features such as fall height in cm.
+- **Depth is relative, not metric.** Depth Anything V2 produces disparity (closer = higher value). All 3D features are normalised within each frame and cannot be compared across frames or subjects. A calibrated depth sensor (Kinect, RealSense) would enable metric features such as fall height in cm.
 
-- **Spine angle in disparity space is unreliable.** Joints at similar distances from the camera produce apparent depth offsets due to scene texture, making 3D spine angle noisy.  It is computed and shown in the HUD but excluded from scoring; the 2D body angle is more reliable for standard side-view cameras.
+- **Spine angle in disparity space is unreliable.** Joints at similar distances from the camera produce apparent depth offsets due to scene texture, making 3D spine angle noisy. It is computed and shown in the HUD but excluded from scoring; the 2D body angle is more reliable for standard side-view cameras.
 
-- **Ground plane RANSAC requires a visible floor strip.** If the bottom 15% of the frame is occluded (bed, furniture), the plane estimate degrades.  Hip/shoulder heights above the floor are tracked but not scored for this reason.
+- **Ground plane RANSAC requires a visible floor strip.** If the bottom 15% of the frame is occluded (bed, furniture), the plane estimate degrades. Hip/shoulder heights above the floor are tracked but not scored for this reason.
 
 - **Single-person.** MediaPipe Pose is configured for one subject; crowded scenes are not handled.
 
-- **Overhead cameras.** `cam1` (overhead Kinect) is excluded because MediaPipe is trained on frontal/side views.  A top-down model or background-subtraction approach would be needed for ceiling-mounted clinical cameras.
+- **Overhead cameras.** `cam1` (overhead Kinect) is excluded because MediaPipe is trained on frontal/side views. A top-down model or background-subtraction approach would be needed for ceiling-mounted clinical cameras.
 
-- **Prospective validation.** Evaluation is on a convenience sample of 5 sequences.  Clinical deployment would require IRB-approved prospective study with sensitivity / specificity analysis across patient populations.
+- **Prospective validation.** Evaluation is retrospective, on a single public dataset recorded with one camera geometry. Clinical deployment would require IRB-approved prospective study with sensitivity / specificity analysis across patient populations.
 
 ---
 
@@ -517,8 +480,3 @@ Kepski M., Kwolek B. (2014) Fall Detection Using Ceiling-Mounted 3D Depth Camera
 International Conference on Computer Vision Theory and Applications (VISAPP), pp. 640–647.
 ```
 
----
-
-## Acknowledgments
-
-This project was developed with assistance from Claude (Anthropic) for code implementation and documentation.
