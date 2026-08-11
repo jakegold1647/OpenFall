@@ -424,7 +424,7 @@ options:
 ## Project structure
 
 ```
-prefall/
+OpenFall/
 ├── run.py                          # CLI entry point
 ├── Dockerfile
 ├── requirements.txt
