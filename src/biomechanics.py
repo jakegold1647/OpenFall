@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 from collections import deque
 
-import cv2
 import numpy as np
 
 # MediaPipe landmark indices used in 3D analysis

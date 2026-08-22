@@ -436,10 +436,28 @@ OpenFall/
 ├── scripts/
 │   ├── download_samples.py         # download UR Fall Dataset videos
 │   └── generate_test_video.py      # generate synthetic stick-figure test video
+├── tests/
+│   ├── requirements.txt            # lightweight core-test dependency
+│   └── test_biomechanics.py        # model-free 3D geometry and feature tests
 └── data/
     ├── pose_landmarker_lite.task   # MediaPipe model (downloaded on first run)
     └── videos/                     # place test videos here (gitignored)
 ```
+
+---
+
+## Testing
+
+The core biomechanics checks do not download model weights or require a camera:
+
+```bash
+python -m pip install -r tests/requirements.txt
+python -m unittest discover -s tests -v
+```
+
+CI runs these tests and compiles the Python sources on Python 3.11 and 3.12.
+Full detector runs still require the dependencies and model setup from the
+quickstart above.
 
 ---
 
